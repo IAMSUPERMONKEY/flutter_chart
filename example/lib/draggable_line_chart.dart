@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:example/style.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chart/chart/chart/line_chart.dart';
 import 'package:flutter_chart/chart/common/base_layout_config.dart';
 import 'package:flutter_chart/chart/common/chart_gesture_view.dart';
+import 'package:flutter_chart/chart/common/gesture_delegate.dart';
 import 'package:flutter_chart/chart/impl/line/line_canvas_impl.dart';
 import 'package:flutter_chart/chart/impl/line/line_layout_impl.dart';
 import 'package:flutter_chart/chart/model/chart_data_model.dart';
@@ -21,104 +24,115 @@ class DraggableLineChart extends StatefulWidget {
 }
 
 class _DraggableLineChartState extends State<DraggableLineChart> {
-  static DateTime hour({int hour = 0}) {
-    var milliseconds = (1656302400 + 3600 * hour) * 1000;
-    return DateTime.fromMillisecondsSinceEpoch(milliseconds);
-  }
-
-  /// 数据源
-  final data = [
-    ChartDataModel(
-      xAxis: hour(hour: 0),
-      yAxis: 0,
-      hasBubble: Random(0).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 1),
-      yAxis: 1,
-      hasBubble: Random(1).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 2),
-      yAxis: 9,
-      hasBubble: Random(2).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 3),
-      yAxis: 11,
-      hasBubble: Random(3).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 4),
-      yAxis: 56,
-      hasBubble: Random(4).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 5),
-      yAxis: 100,
-      hasBubble: Random(5).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 6),
-      yAxis: 88,
-      hasBubble: Random(6).nextBool(),
-    ),
-    ChartDataModel(
-      xAxis: hour(hour: 7),
-      yAxis: 33,
-      hasBubble: Random(7).nextBool(),
-    ),
-    ChartDataModel(xAxis: hour(hour: 8), yAxis: 55),
-    ChartDataModel(xAxis: hour(hour: 9), yAxis: 77),
-    ChartDataModel(xAxis: hour(hour: 10), yAxis: 34),
-    ChartDataModel(xAxis: hour(hour: 11), yAxis: 2),
-    ChartDataModel(xAxis: hour(hour: 12), yAxis: 7),
-  ];
+  late Timer _timer;
+  final List<ChartDataModel> data = [];
 
   Size? size;
   final margin = const EdgeInsets.symmetric(horizontal: 10);
+  GestureDelegate _delegate = GestureDelegate();
+  @override
+  void initState() {
+    super.initState();
+    _begin();
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  void _begin() {
+    int hour = 0;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        data.add(ChartDataModel(
+          xAxis: getHour(hour: hour),
+          yAxis: Random().nextInt(200).toDouble(),
+          hasBubble: Random(0).nextBool(),
+        ));
+      });
+      if (hour == 10) _timer.cancel();
+      hour += 1;
+    });
+  }
+
+  static DateTime getHour({int hour = 0}) {
+    var milliseconds = (1656302400 + 3600 * hour) * 1000;
+    return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  }
 
   @override
   Widget build(BuildContext context) {
     var pixel = MediaQuery.of(context).size.width;
     size ??= Size(pixel, 264);
-    return Container(
-      width: double.infinity,
-      margin: margin,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: ChartGestureView<ChartDataModel>(
-        initConfig: LineLayoutConfig(
-          data: data,
-          size: Size(pixel - margin.horizontal, 264),
-          delegate: CommonLineAxisDelegate.copyWith(
-            xAxisFormatter: _xAxisFormatter,
-            yAxisFormatter: _yAxisFormatter,
-            lineStyle: CommonLineAxisDelegate.lineStyle?.copyWith(
-              color: Colors.green,
-            ),
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          margin: margin,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
           ),
-          popupSpec: CommonPopupSpec.copyWith(
-            textFormatter: _textFormatter,
-            // popupShouldDraw: _popupShouldShow,
-            // bubbleShouldDraw: _popupBubbleShouldShow,
-            lineStyle: CommonPopupSpec.lineStyle?.copyWith(
-              color: Colors.lightGreen,
+          child: ChartGestureView<ChartDataModel>(
+            initConfig: LineLayoutConfig(
+              data: data,
+              size: Size(pixel - margin.horizontal, 264),
+              delegate: CommonLineAxisDelegate.copyWith(
+                xAxisFormatter: _xAxisFormatter,
+                yAxisFormatter: _yAxisFormatter,
+                lineStyle: CommonLineAxisDelegate.lineStyle?.copyWith(
+                  color: Colors.green,
+                ),
+              ),
+              popupSpec: CommonPopupSpec.copyWith(
+                textFormatter: _textFormatter,
+                // popupShouldDraw: _popupShouldShow,
+                // bubbleShouldDraw: _popupBubbleShouldShow,
+                lineStyle: CommonPopupSpec.lineStyle?.copyWith(
+                  color: Colors.lightGreen,
+                ),
+              ),
+              gestureDelegate: _delegate,
+            ),
+            builder: (_, newConfig) => CustomPaint(
+              size: size!,
+              painter: LineChart(
+                data: data,
+                contentCanvas: LineCanvasImpl(),
+                layoutConfig: newConfig as BaseLayoutConfig<ChartDataModel>,
+              ),
             ),
           ),
         ),
-        builder: (_, newConfig) => CustomPaint(
-          size: size!,
-          painter: LineChart(
-            data: data,
-            contentCanvas: LineCanvasImpl(),
-            layoutConfig: newConfig as BaseLayoutConfig<ChartDataModel>,
-          ),
-        ),
-      ),
+        TextButton(
+            onPressed: () {
+              _pressMove();
+            },
+            child: Text("abc"))
+      ],
     );
+  }
+
+  void _pressMove() async {
+    const PointerEvent addPointer = PointerAddedEvent(pointer: 1, position: Offset(122.8, 200));
+    const PointerEvent downPointer = PointerDownEvent(pointer: 1, position: Offset(122.8, 200));
+    GestureBinding.instance.handlePointerEvent(addPointer);
+    GestureBinding.instance.handlePointerEvent(downPointer);
+
+    double dx = 20;
+    double updateCount = 20;
+    for (int i = 0; i < 20; i++) {
+      // tag1
+      await Future.delayed(const Duration(milliseconds: 6));
+      PointerEvent movePointer = PointerMoveEvent(pointer: 1, delta: Offset(dx, 0), position: Offset(dx * -i, 0));
+      GestureBinding.instance.handlePointerEvent(movePointer);
+    }
+
+    PointerEvent upPointer = PointerUpEvent(pointer: 1, position: Offset(dx * -updateCount, 0));
+    GestureBinding.instance.handlePointerEvent(upPointer);
   }
 
   /// 悬浮框内容
