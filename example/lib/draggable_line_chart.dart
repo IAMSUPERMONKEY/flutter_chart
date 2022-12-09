@@ -29,7 +29,8 @@ class _DraggableLineChartState extends State<DraggableLineChart> {
 
   Size? size;
   final margin = const EdgeInsets.symmetric(horizontal: 10);
-  GestureDelegate _delegate = GestureDelegate();
+  int position = 0;
+  GestureDelegate? _delegate;
   @override
   void initState() {
     super.initState();
@@ -77,39 +78,42 @@ class _DraggableLineChartState extends State<DraggableLineChart> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: ChartGestureView<ChartDataModel>(
-            initConfig: LineLayoutConfig(
-              data: data,
-              size: Size(pixel - margin.horizontal, 264),
-              delegate: CommonLineAxisDelegate.copyWith(
-                xAxisFormatter: _xAxisFormatter,
-                yAxisFormatter: _yAxisFormatter,
-                lineStyle: CommonLineAxisDelegate.lineStyle?.copyWith(
-                  color: Colors.green,
-                ),
-              ),
-              popupSpec: CommonPopupSpec.copyWith(
-                textFormatter: _textFormatter,
-                // popupShouldDraw: _popupShouldShow,
-                // bubbleShouldDraw: _popupBubbleShouldShow,
-                lineStyle: CommonPopupSpec.lineStyle?.copyWith(
-                  color: Colors.lightGreen,
-                ),
-              ),
-              gestureDelegate: _delegate,
-            ),
-            builder: (_, newConfig) => CustomPaint(
-              size: size!,
-              painter: LineChart(
+              initConfig: LineLayoutConfig(
                 data: data,
-                contentCanvas: LineCanvasImpl(),
-                layoutConfig: newConfig as BaseLayoutConfig<ChartDataModel>,
+                size: Size(pixel - margin.horizontal, 264),
+                delegate: CommonLineAxisDelegate.copyWith(
+                  xAxisFormatter: _xAxisFormatter,
+                  yAxisFormatter: _yAxisFormatter,
+                  lineStyle: CommonLineAxisDelegate.lineStyle?.copyWith(
+                    color: Colors.green,
+                  ),
+                ),
+                // popupSpec: CommonPopupSpec.copyWith(
+                //   textFormatter: _textFormatter,
+                //   // popupShouldDraw: _popupShouldShow,
+                //   // bubbleShouldDraw: _popupBubbleShouldShow,
+                //   lineStyle: CommonPopupSpec.lineStyle?.copyWith(
+                //     color: Colors.lightGreen,
+                //   ),
+                // ),
+                gestureDelegate: _delegate,
               ),
-            ),
-          ),
+              builder: (_, newConfig) {
+                position = newConfig.endOffset.dx.toInt();
+                _delegate = newConfig.gestureDelegate?.copyWith(initializeOffset: Offset(position.toDouble(), 0));
+                return CustomPaint(
+                  size: size!,
+                  painter: LineChart(
+                    data: data,
+                    contentCanvas: LineCanvasImpl(),
+                    layoutConfig: newConfig.copyWith(initializePosition: position),
+                  ),
+                );
+              }),
         ),
         TextButton(
             onPressed: () {
-              _pressMove();
+              // _pressMove();
             },
             child: Text("abc"))
       ],
