@@ -4,6 +4,7 @@ import 'package:flutter_chart/chart/common/axis_delegate.dart';
 import 'package:flutter_chart/chart/common/popup_spec.dart';
 import 'package:flutter_chart/chart/model/chart_data_bar.dart';
 import 'package:flutter_chart/chart/model/chart_data_model.dart';
+import 'package:collection/collection.dart';
 
 /// 曲线图 坐标轴基本样式
 const CommonLineAxisDelegate = AxisDelegate<ChartDataModel>(
@@ -77,3 +78,11 @@ const CommonBarPopupSpec = PopupSpec<ChartDataBar>(
     stroke: Color(0xFFFFD4D4),
   ),
 );
+
+
+import 'package:collection/collection.dart';
+void main() {
+  final a = [1,1,22,22,33,33,34,34];
+  final b = groupBy(a, (key) => key);
+  print(b);// {1: [1, 1], 22: [22, 22], 33: [33, 33], 34: [34, 34]}
+}
